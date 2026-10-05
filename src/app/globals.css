@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-manrope);
+  --font-serif: var(--font-newsreader);
+  --color-ink: #071018;
+  --color-midnight: #0c1626;
+  --color-surface: #121c2f;
+  --color-line: #2a3a52;
+  --color-mist: #d5deea;
+  --color-faint: #93a4bb;
+  --color-cyan: #7ef0ea;
+  --color-violet: #9b8cff;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background:
+    radial-gradient(1000px 520px at 80% -10%, rgba(155, 140, 255, 0.16), transparent 55%),
+    radial-gradient(800px 420px at -10% 20%, rgba(126, 240, 234, 0.08), transparent 50%),
+    var(--color-ink);
+  color: var(--color-mist);
+  font-family: var(--font-manrope), sans-serif;
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 4px;
+  mix-blend-mode: overlay;
+  opacity: 0.15;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-cyan);
+  outline-offset: 3px;
+}
+
+.serif { font-family: var(--font-newsreader), serif; }
+
+.glass {
+  background: rgba(18, 28, 47, 0.72);
+  border: 1px solid rgba(213, 222, 234, 0.12);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
