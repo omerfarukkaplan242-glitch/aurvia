@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { cityLabel, destinations, packages, providers, treatments } from "@/lib/demo/inventory";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { isLocale, localePath, type Locale } from "@/lib/i18n/config";
-import { convertFromEur, formatMoney, isCurrency } from "@/lib/logic/currency";
+import { convertFromEur, convertToEur, formatMoney, isCurrency } from "@/lib/logic/currency";
 import { cookies } from "next/headers";
 import { pageMetadata } from "@/lib/seo";
 
@@ -36,8 +36,9 @@ export default async function ProvidersPage({
     if (city && provider.citySlug !== city) return false;
     if (language && !provider.languages.includes(language as Locale)) return false;
     if (budget > 0) {
+      const budgetEur = convertToEur(budget, currency);
       const prices = packages.filter((item) => item.providerSlug === provider.slug).map((item) => item.priceEur);
-      if (!prices.some((price) => price <= budget)) return false;
+      if (!prices.some((price) => price <= budgetEur)) return false;
     }
     return true;
   });
@@ -66,7 +67,7 @@ export default async function ProvidersPage({
             <option value="tr">TR</option>
           </select>
         </label>
-        <label>{d.provider.budget}
+        <label>{d.provider.budget} ({currency}, {d.simulatedRates})
           <input name="budget" type="number" min={0} defaultValue={budget || ""} className="mt-1 w-full rounded-xl bg-midnight px-3 py-3" />
         </label>
         <button className="self-end rounded-full bg-cyan px-4 py-3 font-semibold text-ink" type="submit">{d.hero.search}</button>

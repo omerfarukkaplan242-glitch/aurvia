@@ -9,7 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   const d = getDictionary(locale);
-  return pageMetadata(locale, d.brand, "", d.tagline);
+  return pageMetadata(locale, `${d.brand} — ${d.tagline}`, "", d.hero.body, true);
 }
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {

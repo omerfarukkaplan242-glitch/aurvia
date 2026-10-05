@@ -16,8 +16,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/match",
     "/about",
     "/contact",
-    "/login",
-    "/signup",
     ...treatments.map((item) => `/treatments/${item.slug}`),
     ...providers.map((item) => `/providers/${item.slug}`),
     ...destinations.map((item) => `/destinations/${item.slug}`),

@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { LOCALES, localePath, type Locale } from "@/lib/i18n/config";
+import { localePath, type Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
-import { CURRENCIES, type Currency } from "@/lib/logic/currency";
+import type { Currency } from "@/lib/logic/currency";
 import { legalDocuments, LEGAL_SLUGS } from "@/lib/content/legal";
-import { setCurrency, logout } from "@/lib/actions";
+import { logout } from "@/lib/actions";
+import { CurrencyForm } from "./CurrencyForm";
+import { LocaleLinks } from "./LocaleLinks";
 
 const links = [
   ["treatments", "/treatments"],
@@ -30,7 +32,7 @@ export function SiteHeader({
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-ink/80 backdrop-blur">
-      <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:bg-cyan focus:px-3 focus:py-2 focus:text-ink">{d.common.next}</a>
+      <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-30 focus:bg-cyan focus:px-3 focus:py-2 focus:text-ink">{d.common.skip}</a>
       <div className="flex items-center justify-between gap-4 px-5 py-4 md:px-10">
         <Link href={localePath(locale)} className="text-sm tracking-[0.28em] text-white">{d.brand}</Link>
         <nav aria-label={d.nav.label} className="hidden items-center gap-5 text-sm lg:flex">
@@ -39,24 +41,8 @@ export function SiteHeader({
           ))}
         </nav>
         <div className="flex items-center gap-2 text-sm">
-          <form action={setCurrency} className="hidden items-center gap-2 md:flex">
-            <label className="sr-only" htmlFor="currency">{d.nav.currency}</label>
-            <select id="currency" name="currency" defaultValue={currency} className="rounded-full bg-midnight px-3 py-2">
-              {CURRENCIES.map((item) => <option key={item}>{item}</option>)}
-            </select>
-            <input type="hidden" name="locale" value={locale} />
-            <button className="rounded-full border border-line px-3 py-2" type="submit">{d.common.save}</button>
-          </form>
-          <nav aria-label={d.nav.language} className="flex gap-1">
-            {LOCALES.map((item) => {
-              const nextPath = path.replace(/^\/(en|de|tr)/, `/${item}`) || `/${item}`;
-              return (
-                <Link key={item} href={nextPath} hrefLang={item} aria-current={item === locale ? "page" : undefined} className={item === locale ? "text-cyan" : "text-faint"}>
-                  {item.toUpperCase()}
-                </Link>
-              );
-            })}
-          </nav>
+          <CurrencyForm locale={locale} currency={currency} label={d.nav.currency} save={d.common.save} />
+          <LocaleLinks locale={locale} path={path} label={d.nav.language} />
           {signedIn ? (
             <form action={logout}>
               <input type="hidden" name="locale" value={locale} />

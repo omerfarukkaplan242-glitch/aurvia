@@ -25,6 +25,13 @@ export function convertFromEur(amountEur: number, currency: Currency, table: FxT
   return Math.round(amountEur * rate);
 }
 
+export function convertToEur(amount: number, currency: Currency, table: FxTable = SIMULATED_FX): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const rate = table.rates[currency];
+  if (!rate) return 0;
+  return Math.round(amount / rate);
+}
+
 export function formatMoney(amount: number, currency: Currency, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",

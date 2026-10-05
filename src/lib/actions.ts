@@ -4,7 +4,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { isCurrency } from "./logic/currency";
-import { isLocale, localePath } from "./i18n/config";
+import { isLocale, localePath, type Locale } from "./i18n/config";
+import { safeReturnPath } from "./logic/safe-path";
+import { buildTripSelection } from "./logic/trip-selection";
 import {
   contactSchema,
   loginSchema,
@@ -18,7 +20,6 @@ import {
 } from "./logic/validation";
 import { createClient } from "./supabase/server";
 import { publicEnv } from "./supabase/env";
-import { paymentProvider } from "./services/simulation";
 import { providers } from "./demo/inventory";
 
 function localeFrom(formData: FormData) {
@@ -32,7 +33,7 @@ export async function setCurrency(formData: FormData) {
   if (!isCurrency(currency)) return;
   const jar = await cookies();
   jar.set("aurvia_currency", currency, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
-  redirect(localePath(locale));
+  redirect(safeReturnPath(locale, formData.get("returnTo"), localePath(locale)));
 }
 
 export async function signup(formData: FormData) {
@@ -67,7 +68,7 @@ export async function login(formData: FormData) {
   if (!supabase) redirect(localePath(locale, "/login?error=config"));
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) redirect(localePath(locale, "/login?error=auth"));
-  redirect(localePath(locale, "/journey"));
+  redirect(safeReturnPath(locale, formData.get("next"), localePath(locale, "/journey")));
 }
 
 export async function logout(formData: FormData) {
@@ -135,12 +136,50 @@ export async function submitRequest(formData: FormData) {
   const supabase = await createClient();
   if (!supabase) redirect(localePath(locale, "/trip?error=config"));
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(localePath(locale, `/login?next=/trip`));
+  if (!user) {
+    const resume = new URLSearchParams();
+    for (const [key, field] of [
+      ["treatment", "treatmentSlug"],
+      ["provider", "providerSlug"],
+      ["flight", "flightId"],
+      ["hotel", "hotelId"],
+      ["transfer", "transferId"],
+      ["car", "carId"],
+      ["esim", "esimId"],
+      ["insurance", "insuranceId"],
+      ["experience", "experienceId"],
+      ["nights", "nights"],
+    ] as const) {
+      const value = String(formData.get(field) ?? "");
+      if (value) resume.set(key, value);
+    }
+    const next = localePath(locale, `/trip${resume.size ? `?${resume}` : ""}`);
+    redirect(localePath(locale, `/login?next=${encodeURIComponent(next)}`));
+  }
   const { data: allowed } = await supabase.rpc("consume_rate_limit", { action: "submit_request", max_hits: 8, window_seconds: 3600 });
   if (allowed === false) redirect(localePath(locale, "/trip?error=rate"));
   const provider = providers.find((item) => item.slug === parsed.data.providerSlug);
   if (!provider) redirect(localePath(locale, "/trip?error=invalid"));
+  const nights = Math.min(30, Math.max(1, Number(formData.get("nights") || 3)));
+  const selection = buildTripSelection({
+    treatmentSlug: parsed.data.treatmentSlug,
+    providerSlug: provider.slug,
+    flightId: String(formData.get("flightId") ?? ""),
+    hotelId: String(formData.get("hotelId") ?? ""),
+    transferId: String(formData.get("transferId") ?? ""),
+    carId: String(formData.get("carId") ?? ""),
+    esimId: String(formData.get("esimId") ?? ""),
+    insuranceId: String(formData.get("insuranceId") ?? ""),
+    experienceId: String(formData.get("experienceId") ?? ""),
+    nights,
+    locale: locale as Locale,
+  });
   const { data: providerRow } = await supabase.from("providers").select("id").eq("slug", provider.slug).maybeSingle();
+  if (providerRow?.id) {
+    const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: existing } = await supabase.from("requests").select("id").eq("patient_id", user.id).eq("provider_id", providerRow.id).eq("treatment_slug", parsed.data.treatmentSlug).gte("created_at", since).limit(1);
+    if (existing && existing.length > 0) redirect(localePath(locale, "/journey?sent=1"));
+  }
   const { data: request, error } = await supabase.from("requests").insert({
     patient_id: user.id,
     provider_id: providerRow?.id ?? null,
@@ -151,29 +190,33 @@ export async function submitRequest(formData: FormData) {
     language: parsed.data.language,
     note: parsed.data.note,
     status: "submitted",
+    selection,
   }).select("id").single();
   if (error || !request) redirect(localePath(locale, "/trip?error=save"));
-  await supabase.from("journeys").insert({
+  const { data: journey, error: journeyError } = await supabase.from("journeys").insert({
     patient_id: user.id,
     request_id: request.id,
     provider_id: providerRow?.id ?? null,
     stage: "consultation",
     title: "My journey",
-  });
-  const payment = await paymentProvider.authorize({
-    amountEur: 0,
-    currency: parsed.data.currency,
-    reference: request.id,
-  });
-  await supabase.from("transactions").insert({
+  }).select("id").single();
+  if (journeyError || !journey) redirect(localePath(locale, "/trip?error=save"));
+  await supabase.from("trip_drafts").upsert({
     patient_id: user.id,
-    request_id: request.id,
-    reference: payment.reference,
-    amount_eur: 0,
+    payload: selection,
     currency: parsed.data.currency,
-    status: "simulated",
-    provider: payment.provider,
   });
+  if (selection.lines.length > 0) {
+    await supabase.from("bookings").insert(selection.lines.map((line) => ({
+      journey_id: journey.id,
+      patient_id: user.id,
+      kind: line.kind,
+      reference: line.id,
+      amount_eur: line.amountEur,
+      status: "requested",
+      simulated: true,
+    })));
+  }
   redirect(localePath(locale, "/journey?sent=1"));
 }
 

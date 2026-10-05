@@ -27,3 +27,16 @@ export function calculateCommission(amountEur: number, rule: CommissionRule | nu
   if (rule.mode === "fixed") return Math.max(0, Math.round(rule.value));
   return Math.max(0, Math.round((amountEur * rule.value) / 100));
 }
+
+export type CommercialEvent = "inquiry" | "simulated" | "confirmed" | "refunded" | "cancelled";
+
+/** A payable commission exists only after the contracted event, once. */
+export function payableCommission(input: {
+  amountEur: number;
+  rule: CommissionRule | null;
+  event: CommercialEvent;
+  alreadyRecorded?: boolean;
+}): number {
+  if (input.alreadyRecorded || input.event !== "confirmed") return 0;
+  return calculateCommission(input.amountEur, input.rule);
+}

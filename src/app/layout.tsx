@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Manrope, Newsreader } from "next/font/google";
+import { isLocale } from "@/lib/i18n/config";
 import "./globals.css";
 
 const sans = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
@@ -11,9 +13,12 @@ export const metadata: Metadata = {
   description: "One platform for your complete medical journey to Türkiye.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const path = (await headers()).get("x-aurvia-path") ?? "";
+  const segment = path.split("/").filter(Boolean)[0] ?? "en";
+  const lang = isLocale(segment) ? segment : "en";
   return (
-    <html lang="en" className={`${sans.variable} ${serif.variable} h-full`}>
+    <html lang={lang} className={`${sans.variable} ${serif.variable} h-full`}>
       <body className="min-h-full antialiased">{children}</body>
     </html>
   );

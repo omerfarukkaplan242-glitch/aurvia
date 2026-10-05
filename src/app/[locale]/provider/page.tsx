@@ -36,7 +36,7 @@ export default async function ProviderPortalPage({
   const memberships = (await supabase!.from("provider_members").select("provider_id").eq("user_id", user.id)).data ?? [];
   const providerIds = memberships.map((item) => item.provider_id);
   const requests = providerIds.length
-    ? (await supabase!.from("requests").select("id, status, treatment_slug, created_at").in("provider_id", providerIds).is("deleted_at", null)).data ?? []
+    ? (await supabase!.from("requests").select("id, status, treatment_slug, created_at, selection").in("provider_id", providerIds).is("deleted_at", null)).data ?? []
     : [];
   const packageRows = providerIds.length
     ? (await supabase!.from("packages").select("id, title, price_eur, provider_id").in("provider_id", providerIds).is("deleted_at", null)).data ?? []
@@ -58,16 +58,21 @@ export default async function ProviderPortalPage({
       {providerIds.length === 0 ? <p className="mt-6" role="status">{d.portal.empty}</p> : null}
       <h2 className="mt-8 text-2xl text-white">{d.portal.requests}</h2>
       <ul className="mt-3 space-y-3">
-        {requests.map((request) => (
+        {requests.map((request) => {
+          const selection = request.selection as { simulated?: boolean; totalEur?: number; lines?: { id: string; label: string }[] } | null;
+          return (
           <li key={request.id} className="rounded-2xl border border-line p-4">
             <p>{request.treatment_slug} · {request.status}</p>
+            {selection?.simulated ? <p className="mt-2 text-sm text-cyan">{d.portal.notBooking}</p> : null}
+            {selection?.lines?.length ? <ul className="mt-2 text-sm text-faint">{selection.lines.map((line) => <li key={line.id}>{line.label}</li>)}</ul> : null}
             <form action={respondToRequest}>
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="requestId" value={request.id} />
               <button className="mt-2 text-cyan" type="submit">{d.portal.respond}</button>
             </form>
           </li>
-        ))}
+          );
+        })}
       </ul>
       <h2 className="mt-8 text-2xl text-white">{d.portal.packages}</h2>
       <ul className="mt-3 space-y-3">

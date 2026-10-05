@@ -87,6 +87,7 @@ export default async function TripPage({
       <p className="text-xs uppercase tracking-[0.2em] text-cyan">{d.demoBadge}</p>
       <h1 className="serif mt-3 text-5xl text-white">{d.trip.title}</h1>
       <p className="mt-3 max-w-2xl text-faint">{d.trip.simulated}</p>
+      <p className="mt-2 max-w-2xl text-sm text-cyan">{d.trip.statusLine}</p>
       <ol className="mt-6 flex flex-wrap gap-2 text-sm">
         {d.trip.steps.map((step) => <li key={step} className="rounded-full border border-line px-3 py-1">{step}</li>)}
       </ol>
@@ -95,7 +96,7 @@ export default async function TripPage({
       <h2 className="mt-10 text-2xl text-white">{d.trip.treatment}</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         {treatments.filter((item) => item.status === "open").map((item) => (
-          <Link key={item.slug} className={item.slug === treatment ? "rounded-full bg-cyan px-3 py-2 text-ink" : "rounded-full border border-line px-3 py-2"} href={localePath(locale, `/trip?treatment=${item.slug}`)}>{item.name[locale]}</Link>
+          <Link key={item.slug} className={item.slug === treatment ? "rounded-full bg-cyan px-3 py-2 text-ink" : "rounded-full border border-line px-3 py-2"} href={localePath(locale, `/trip?${new URLSearchParams({ treatment: item.slug, nights: String(nights) })}`)}>{item.name[locale]}</Link>
         ))}
       </div>
 
@@ -182,10 +183,19 @@ export default async function TripPage({
           <input type="hidden" name="treatmentSlug" value={treatment} />
           <input type="hidden" name="destinationSlug" value={city ?? ""} />
           <input type="hidden" name="currency" value={currency} />
+          <input type="hidden" name="flightId" value={flightId} />
+          <input type="hidden" name="hotelId" value={hotelId} />
+          <input type="hidden" name="transferId" value={transferId} />
+          <input type="hidden" name="carId" value={carId} />
+          <input type="hidden" name="esimId" value={esimId} />
+          <input type="hidden" name="insuranceId" value={insuranceId} />
+          <input type="hidden" name="experienceId" value={experienceId} />
+          <input type="hidden" name="nights" value={nights} />
           <label>{d.onboard.notes}
             <textarea name="note" maxLength={1000} className="mt-1 w-full rounded-xl bg-ink px-3 py-3" />
           </label>
-          <button className="w-fit rounded-full bg-cyan px-5 py-3 font-semibold text-ink" type="submit" disabled={!providerSlug}>{d.trip.request}</button>
+          {providerSlug ? null : <p id="need-provider" className="text-sm text-faint">{d.trip.needProvider}</p>}
+          <button className="w-fit rounded-full bg-cyan px-5 py-3 font-semibold text-ink disabled:opacity-50" type="submit" disabled={!providerSlug} aria-describedby={providerSlug ? undefined : "need-provider"}>{d.trip.request}</button>
         </form>
       </section>
       <TrackView locale={locale} event="trip_started" treatmentSlug={treatment} providerSlug={providerSlug || undefined} />

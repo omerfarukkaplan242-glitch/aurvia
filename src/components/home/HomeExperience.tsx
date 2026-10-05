@@ -52,9 +52,11 @@ export function HomeExperience({ locale, d }: { locale: Locale; d: Dictionary })
           {d.story.steps.map((step, index) => (
             <Reveal key={step.title}>
               <li className="glass h-full rounded-3xl p-6">
-                <p className="text-cyan">0{index + 1}</p>
-                <h3 className="mt-3 text-xl text-white">{step.title}</h3>
-                <p className="mt-2 text-faint">{step.body}</p>
+                <Link href={localePath(locale, ["/treatments", "/providers", "/compare", "/trip", "/destinations", "/journey"][index] ?? "/treatments")} className="block h-full">
+                  <p className="text-cyan">0{index + 1}</p>
+                  <h3 className="mt-3 text-xl text-white">{step.title}</h3>
+                  <p className="mt-2 text-faint">{step.body}</p>
+                </Link>
               </li>
             </Reveal>
           ))}
@@ -79,10 +81,12 @@ export function HomeExperience({ locale, d }: { locale: Locale; d: Dictionary })
         <article className="rounded-3xl border border-line p-8">
           <h2 className="serif text-3xl text-white">{d.home.matchTitle}</h2>
           <p className="mt-3 text-faint">{d.home.matchBody}</p>
+          <Link className="mt-5 inline-block text-cyan" href={localePath(locale, "/match?treatment=hair-transplant")}>{d.home.matchCta}</Link>
         </article>
         <article className="rounded-3xl border border-line p-8">
           <h2 className="serif text-3xl text-white">{d.home.trustTitle}</h2>
           <p className="mt-3 text-faint">{d.home.trustBody}</p>
+          <Link className="mt-5 inline-block text-cyan" href={localePath(locale, "/about")}>{d.home.trustCta}</Link>
         </article>
       </section>
     </div>

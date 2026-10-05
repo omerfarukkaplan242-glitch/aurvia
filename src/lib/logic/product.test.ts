@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-import { calculateCommission, selectCommissionRule } from "./commission";
-import { convertFromEur, SIMULATED_FX } from "./currency";
+import { calculateCommission, payableCommission, selectCommissionRule } from "./commission";
+import { convertFromEur, convertToEur, SIMULATED_FX } from "./currency";
+import { safeReturnPath } from "./safe-path";
+import { buildTripSelection } from "./trip-selection";
+import { serviceIntegrations } from "../services/integration-status";
 import { matchProviders } from "./matching";
 import { tripTotalEur } from "./trip";
 import { canAccessAdmin, canChangeOwnRole, canManageProvider, canReadPatient } from "./authz";
@@ -54,10 +57,44 @@ describe("commission and currency", () => {
     assert.equal(SIMULATED_FX.simulated, true);
     assert.equal(convertFromEur(100, "USD"), 108);
     assert.equal(convertFromEur(10, "TRY"), 472);
+    assert.equal(convertToEur(108, "USD"), 100);
+  });
+
+  it("does not pay commission on an inquiry, a simulation, a refund, or a duplicate event", () => {
+    const rule = { id: "g", service: "hotel" as const, mode: "percentage" as const, value: 10, providerId: null };
+    assert.equal(payableCommission({ amountEur: 500, rule, event: "inquiry" }), 0);
+    assert.equal(payableCommission({ amountEur: 500, rule, event: "simulated" }), 0);
+    assert.equal(payableCommission({ amountEur: 500, rule, event: "refunded" }), 0);
+    assert.equal(payableCommission({ amountEur: 500, rule, event: "cancelled" }), 0);
+    assert.equal(payableCommission({ amountEur: 500, rule, event: "confirmed", alreadyRecorded: true }), 0);
+    assert.equal(payableCommission({ amountEur: 500, rule, event: "confirmed" }), 50);
   });
 });
 
 describe("trip and authz", () => {
+  it("keeps return paths inside the active locale", () => {
+    assert.equal(safeReturnPath("en", "/en/trip?provider=demo", "/en"), "/en/trip?provider=demo");
+    assert.equal(safeReturnPath("en", "https://evil.example", "/en/journey"), "/en/journey");
+    assert.equal(safeReturnPath("en", "/de/trip", "/en/journey"), "/en/journey");
+  });
+
+  it("prices a simulated trip from catalog ids and never marks it live", () => {
+    const selection = buildTripSelection({
+      treatmentSlug: "hair-transplant",
+      providerSlug: providers[0]!.slug,
+      flightId: flights[0]!.id,
+      hotelId: hotels[0]!.id,
+      nights: 2,
+      locale: "en",
+    });
+    assert.equal(selection.simulated, true);
+    assert.equal(selection.commercialStatus, "estimate");
+    assert.equal(selection.lines.every((line) => line.simulated), true);
+    assert.equal(selection.totalEur, selection.lines.reduce((sum, line) => sum + line.amountEur, 0));
+    assert.equal(serviceIntegrations.payment, "SIMULATION");
+    assert.equal(serviceIntegrations.flight, "SIMULATION");
+  });
+
   it("sums only finite lines", () => {
     assert.equal(tripTotalEur([{ kind: "flight", id: "a", label: "a", amountEur: 100, simulated: true }, { kind: "hotel", id: "b", label: "b", amountEur: Number.NaN, simulated: true }]), 100);
   });

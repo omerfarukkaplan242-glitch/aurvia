@@ -99,5 +99,16 @@ export function JourneyGlobe() {
     };
   }, []);
 
-  return <canvas ref={ref} className="h-full w-full" aria-hidden="true" />;
+  return (
+    <div className="relative h-full w-full">
+      <svg viewBox="0 0 200 200" className="h-full w-full" aria-hidden="true">
+        <circle cx="100" cy="100" r="68" fill="none" stroke="rgba(126,240,234,0.45)" strokeWidth="1" />
+        <path d="M38 112 C70 40, 130 40, 162 108" fill="none" stroke="#7ef0ea" strokeWidth="1.4" />
+        <circle cx="38" cy="112" r="3" fill="#7ef0ea" />
+        <circle cx="100" cy="58" r="3" fill="#9b8cff" />
+        <circle cx="162" cy="108" r="3" fill="#7ef0ea" />
+      </svg>
+      <canvas ref={ref} className="absolute inset-0 h-full w-full" aria-hidden="true" />
+    </div>
+  );
 }
